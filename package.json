@@ -1,0 +1,66 @@
+{
+  "name": "attendance-manager",
+  "version": "1.1.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "build": "electron-builder",
+    "dist": "npm run build-only && npm prune --production",
+    "restore-dev": "npm install"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.woobin.radSafety",
+    "productName": "종합인사관리",
+    "files": [
+      "python_dist/*.exe",
+      "src/**/*",
+      "views/**/*",
+      "data/**/*",
+      "templates/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "python_dist",
+        "to": "python_dist",
+        "filter": [
+          "*.exe"
+        ]
+      },
+      {
+        "from": "templates",
+        "to": "templates"
+      },
+      {
+        "from": "data",
+        "to": "data"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "종합인사관리"
+    }
+  },
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "dayjs": "^1.11.13",
+    "electron-log": "^5.4.0",
+    "exceljs": "^4.4.0",
+    "papaparse": "^5.5.3"
+  }
+}
