@@ -20,7 +20,8 @@
       display: block;
       margin-top: 12px;
     }
-    input[type="text"] {
+    input[type="text"],
+    input[type="password"] {
       width: calc(100% - 10px);
       padding: 6px;
       background-color: #1a1b26;
@@ -64,6 +65,14 @@
         <input type="text" id="outputPath" readonly />
         <button type="button" id="browseBtn">탐색</button>
       </div>
+    </label>
+
+    <label>근태 동기화 주소:
+      <input type="text" id="attendanceIntegrationUrl" placeholder="127.0.0.1:3000" />
+    </label>
+
+    <label>API 연동키:
+      <input type="password" id="attendanceIntegrationKey" placeholder="local-integration-key" />
     </label>
     <br>
 

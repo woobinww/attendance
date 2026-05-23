@@ -23,10 +23,28 @@ const outputDir = path.join(currentDir, 'output');
 const templateDir = path.join(basePath, 'templates');
 const settingsPath = path.join(currentDir, 'user_settings.json');
 
+const attendanceIntegrationServer = '127.0.0.1:3000';
+const attendanceIntegrationPath = '/api/integration/attendance.csv';
+const attendanceIntegrationKey = 'local-integration-key';
+
+function buildAttendanceIntegrationUrl(value) {
+  const raw = (value || attendanceIntegrationServer).trim();
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+  const url = new URL(withProtocol);
+
+  if (!url.pathname || url.pathname === '/') {
+    url.pathname = attendanceIntegrationPath;
+  }
+
+  return url;
+}
+
 
 // 설정 저장 및 브로드캐스트
 function saveSettings(settings) {
   try {
+    settings = { ...defaultSettings, ...settings };
+
     if (!settings.outputPath || settings.outputPath.trim() === '') {
       settings.outputPath = defaultOutput;
     }
@@ -52,10 +70,10 @@ function saveSettings(settings) {
 function loadSettings() {
   try {
     const raw = fs.readFileSync(settingsPath, 'utf-8');
-    return JSON.parse(raw);
+    return { ...defaultSettings, ...JSON.parse(raw) };
   } catch (err) {
     console.error('⚠️ 설정 로딩 실패:', err);
-    return null;
+    return { ...defaultSettings };
   }
 }
 
@@ -96,7 +114,9 @@ function initializeAppData() {
 // 초기 user_settings.json 파일 초기화 코드
 const defaultSettings = {
   department: "부서",
-  outputPath: ""
+  outputPath: "",
+  attendanceIntegrationUrl: attendanceIntegrationServer,
+  attendanceIntegrationKey
 };
 
 if (!fs.existsSync(settingsPath)) {
@@ -149,6 +169,32 @@ ipcMain.handle('generate-attendance-sheet', async (event, { year, month, departm
   }
 });
 
+ipcMain.handle('fetch-attendance-integration-csv', async (event, { month }) => {
+  try {
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      throw new Error('월 형식이 올바르지 않습니다. 예: 2026-05');
+    }
+
+    const settings = loadSettings();
+    const integrationUrl = settings.attendanceIntegrationUrl || attendanceIntegrationServer;
+    const integrationKey = settings.attendanceIntegrationKey || attendanceIntegrationKey;
+    const url = buildAttendanceIntegrationUrl(integrationUrl);
+    url.searchParams.set('month', month);
+    url.searchParams.set('key', integrationKey);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`서버 응답 오류: ${response.status} ${response.statusText}`);
+    }
+
+    const csv = await response.text();
+    return { success: true, csv };
+  } catch (err) {
+    console.error('📛 근태 CSV 동기화 오류:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 
 
 
@@ -182,7 +228,7 @@ ipcMain.handle('loadSettings', async () => {
 ipcMain.on('open-settings', () => {
   const settingsWindow = new BrowserWindow({
     width: 400,
-    height: 320,
+    height: 430,
     resizable: true,
     title: '환경 설정',
     webPreferences: {

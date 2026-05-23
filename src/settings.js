@@ -2,6 +2,8 @@
 window.addEventListener('DOMContentLoaded', () => {
   const departmentInput = document.getElementById('departmentName');
   const outputPathInput = document.getElementById('outputPath');
+  const attendanceIntegrationUrlInput = document.getElementById('attendanceIntegrationUrl');
+  const attendanceIntegrationKeyInput = document.getElementById('attendanceIntegrationKey');
   const browseBtn = document.getElementById('browseBtn');
   const form = document.getElementById('settingsForm');
 
@@ -10,6 +12,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (settings) {
       departmentInput.value = settings.department || '';
       outputPathInput.value = settings.outputPath || '';
+      attendanceIntegrationUrlInput.value = settings.attendanceIntegrationUrl || '';
+      attendanceIntegrationKeyInput.value = settings.attendanceIntegrationKey || '';
     }
   });
 
@@ -26,8 +30,15 @@ window.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const department = departmentInput.value;
     const outputPath = outputPathInput.value;
+    const attendanceIntegrationUrl = attendanceIntegrationUrlInput.value.trim();
+    const attendanceIntegrationKey = attendanceIntegrationKeyInput.value.trim();
 
-    const result = await window.api.saveSettings({ department, outputPath });
+    const result = await window.api.saveSettings({
+      department,
+      outputPath,
+      attendanceIntegrationUrl,
+      attendanceIntegrationKey
+    });
 
     // result가 boolean인지 객체 인지 판단 후 분기
     if (result === true || (result && result.success)) {

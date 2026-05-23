@@ -213,6 +213,61 @@ function saveAttendance() {
   window.api.saveCSV("attendance.csv", csv);
 }
 
+function normalizeAttendanceRecord(record) {
+  const normalized = {
+    date: (record.date ?? '').trim(),
+    name: (record.name ?? '').trim(),
+    ot: (record.ot ?? '').trim(),
+    nightOt: (record.nightOt ?? '').trim(),
+    holidayOt: (record.holidayOt ?? '').trim(),
+    flexOt: (record.flexOt ?? '').trim(),
+    off: (record.off ?? '').trim(),
+    note: (record.note ?? '').trim()
+  };
+
+  if (!normalized.date || !normalized.name) return null;
+  return normalized;
+}
+
+function mergeAttendanceRecordsFromCSV(csv) {
+  const incomingRecords = window.api.parseCSV(csv)
+    .map(normalizeAttendanceRecord)
+    .filter(Boolean);
+
+  if (incomingRecords.length === 0) {
+    throw new Error('서버 CSV에 동기화할 근태 기록이 없습니다.');
+  }
+
+  const byKey = new Map();
+  attendanceRecords
+    .map(normalizeAttendanceRecord)
+    .filter(Boolean)
+    .forEach(record => {
+      byKey.set(`${record.date}|${record.name}`, record);
+    });
+
+  let added = 0;
+  let updated = 0;
+
+  incomingRecords.forEach(record => {
+    const key = `${record.date}|${record.name}`;
+    if (byKey.has(key)) {
+      updated += 1;
+    } else {
+      added += 1;
+    }
+    byKey.set(key, record);
+  });
+
+  attendanceRecords = Array.from(byKey.values())
+    .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+
+  saveAttendance();
+  refreshCalendarAndSummary();
+
+  return { added, updated, total: incomingRecords.length };
+}
+
 // 현재 부서 현재 직원 불러오기
 async function getCurrentEmployeesInDepartment(settings, selectedMonth) {
   const department = settings.department;
@@ -458,6 +513,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  document.getElementById('sync-attendance-btn').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const month = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+    button.disabled = true;
+    button.textContent = '동기화 중...';
+
+    try {
+      const result = await window.api.fetchAttendanceIntegrationCSV(month);
+      if (!result.success) {
+        throw new Error(result.error || '서버 CSV를 받아오지 못했습니다.');
+      }
+
+      const syncResult = mergeAttendanceRecordsFromCSV(result.csv);
+      alert(`서버 동기화 완료\n추가: ${syncResult.added}건\n갱신: ${syncResult.updated}건\n수신: ${syncResult.total}건`);
+    } catch (err) {
+      console.error('attendance sync failed:', err);
+      alert(`서버 동기화 실패: ${err.message}`);
+    } finally {
+      button.disabled = false;
+      button.textContent = '🔄 현재월 서버 동기화';
+    }
+  });
+
   // 9. 폼 제출
   document.getElementById('attendanceForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -527,6 +606,5 @@ document.addEventListener('DOMContentLoaded', () => {
     applyPageTitle(currentSettings?.department) ;
   });
 });
-
 
 

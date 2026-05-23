@@ -161,6 +161,9 @@ contextBridge.exposeInMainWorld("api", {
       department,
     });
   },
+  fetchAttendanceIntegrationCSV: (month) => {
+    return ipcRenderer.invoke("fetch-attendance-integration-csv", { month });
+  },
   reloadApp: () => {
     ipcRenderer.send("reload-app");
   },
