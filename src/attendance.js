@@ -21,6 +21,15 @@ function formatDate(d) {
   return d.toISOString().split('T')[0];
 }
 
+function escapeHTML(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let currentEmployeeList = [];
 // 직원 직원명 -> 부서 매핑
 function getDepartmentOf(name, employeeList) {
@@ -109,7 +118,8 @@ function renderCalendar(year, month, records) {
         formatWithColor('야간', r.nightOt),
         formatWithColor('휴일', r.holidayOt),
         formatWithColor('탄력', r.flexOt),
-        r.off && `<span style="color:blue">${r.off}</span>` // 👈 여기
+        r.off && `<span style="color:blue">${r.off}</span>`,
+        r.note && `<span style="color:#e0af68">${escapeHTML(r.note)}</span>`
       ].filter(Boolean).join(', ');
 
       summary.innerHTML = `${r.name}: ${details}`;
@@ -213,6 +223,19 @@ function saveAttendance() {
   window.api.saveCSV("attendance.csv", csv);
 }
 
+const noteFieldNames = ['note', 'notes', 'memo', 'remark', 'remarks', '비고', '메모'];
+
+function getRecordFieldValue(record, fieldNames) {
+  const existingKeys = fieldNames.filter(fieldName => Object.prototype.hasOwnProperty.call(record, fieldName));
+  const keyWithValue = existingKeys.find(fieldName => (record[fieldName] ?? '').trim() !== '');
+  const foundKey = keyWithValue || existingKeys[0];
+  return foundKey ? record[foundKey] : '';
+}
+
+function hasRecordField(record, fieldNames) {
+  return fieldNames.some(fieldName => Object.prototype.hasOwnProperty.call(record, fieldName));
+}
+
 function normalizeAttendanceRecord(record) {
   const normalized = {
     date: (record.date ?? '').trim(),
@@ -222,7 +245,7 @@ function normalizeAttendanceRecord(record) {
     holidayOt: (record.holidayOt ?? '').trim(),
     flexOt: (record.flexOt ?? '').trim(),
     off: (record.off ?? '').trim(),
-    note: (record.note ?? '').trim()
+    note: (getRecordFieldValue(record, noteFieldNames) ?? '').trim()
   };
 
   if (!normalized.date || !normalized.name) return null;
@@ -231,7 +254,14 @@ function normalizeAttendanceRecord(record) {
 
 function mergeAttendanceRecordsFromCSV(csv) {
   const incomingRecords = window.api.parseCSV(csv)
-    .map(normalizeAttendanceRecord)
+    .map(record => {
+      const normalized = normalizeAttendanceRecord(record);
+      if (!normalized) return null;
+      return {
+        record: normalized,
+        hasNoteField: hasRecordField(record, noteFieldNames)
+      };
+    })
     .filter(Boolean);
 
   if (incomingRecords.length === 0) {
@@ -249,10 +279,14 @@ function mergeAttendanceRecordsFromCSV(csv) {
   let added = 0;
   let updated = 0;
 
-  incomingRecords.forEach(record => {
+  incomingRecords.forEach(({ record, hasNoteField }) => {
     const key = `${record.date}|${record.name}`;
-    if (byKey.has(key)) {
+    const existingRecord = byKey.get(key);
+    if (existingRecord) {
       updated += 1;
+      if (!hasNoteField) {
+        record.note = existingRecord.note;
+      }
     } else {
       added += 1;
     }
@@ -606,5 +640,3 @@ document.addEventListener('DOMContentLoaded', () => {
     applyPageTitle(currentSettings?.department) ;
   });
 });
-
-

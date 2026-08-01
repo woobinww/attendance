@@ -20,7 +20,9 @@ const currentDir = isDev ? devDir : userDir;
 const dataDir = path.join(currentDir, 'data');
 const defaultOutput = path.join(currentDir, 'output');
 const outputDir = path.join(currentDir, 'output');
-const templateDir = path.join(basePath, 'templates');
+const templateDir = isDev
+  ? path.join(basePath, 'templates')
+  : path.join(process.resourcesPath, 'templates');
 const settingsPath = path.join(currentDir, 'user_settings.json');
 
 const attendanceIntegrationServer = '127.0.0.1:3000';
