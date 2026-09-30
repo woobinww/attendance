@@ -214,7 +214,7 @@
 
       <!-- 달력 요약 정보 영역 -->
       <div id="summaryPanel" style="margin-top: 20px; padding: 10px; background-color: #1e1f2f; border: 1px solid #3b4261;">
-        <strong>📊 월간 근태 요약:</strong>
+        <strong>📊 서버 월간 요약:</strong>
         <div id="summaryContent" style="margin-top: 8px;"></div>
       </div>
     </div>
@@ -232,6 +232,10 @@
           <option value="">직원 선택</option>
           <!-- js에서 자동 채우기 -->
         </select>
+
+        <p id="employeeRequiredMessage" role="status" style="margin: 6px 0; color: #f7768e;">
+          직원을 먼저 선택해 주세요.
+        </p>
 
         <label>OT 시간</label>
         <input type="number" name="ot" step="0.5" placeholder="예: 0.5, 1, 1.5" />

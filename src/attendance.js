@@ -136,6 +136,7 @@ function renderCalendar(year, month, records) {
       if (selectedName) {
         // 직원 선택을 자동 지정
         form.name.value = selectedName;
+        updateAttendanceFormAvailability();
         
         // 기록 불러오기
         const record = attendanceRecords.find(r => r.date === dateStr && r.name === selectedName);
@@ -167,6 +168,7 @@ function renderCalendar(year, month, records) {
         form.flexOt.value = '';
         form.off.value = '';
         form.note.value = '';
+        updateAttendanceFormAvailability();
 
         form.name.focus();
       }
@@ -359,7 +361,7 @@ async function populateEmployDropdown() {
     currentEmployeeList = employees;
 
     const select = document.getElementById('employeeSelect');
-    select.innerHTML = ''; // 옵션 초기화
+    select.innerHTML = '<option value="">직원 선택</option>'; // 옵션 초기화
 
     employees.forEach(({ name }) => {
       const option = document.createElement('option');
@@ -367,8 +369,31 @@ async function populateEmployDropdown() {
       option.textContent = name;
       select.appendChild(option);
     });
+
+    // 월을 이동하거나 직원 목록을 다시 불러온 뒤에도 직원 미선택 상태를 유지한다.
+    select.value = '';
+    updateAttendanceFormAvailability();
   } catch (err) {
     console.error("employees dropdown creating failed:", err);
+  }
+}
+
+// 직원이 선택되기 전에는 실제 근태값을 입력하거나 저장할 수 없게 한다.
+function updateAttendanceFormAvailability() {
+  const form = document.getElementById('attendanceForm');
+  const employeeSelect = document.getElementById('employeeSelect');
+  const message = document.getElementById('employeeRequiredMessage');
+
+  if (!form || !employeeSelect) return;
+
+  const hasEmployee = Boolean(employeeSelect.value);
+  form.querySelectorAll('input[name="ot"], input[name="nightOt"], input[name="holidayOt"], input[name="flexOt"], select[name="off"], textarea[name="note"], button[type="submit"]')
+    .forEach(control => {
+      control.disabled = !hasEmployee;
+    });
+
+  if (message) {
+    message.hidden = hasEmployee;
   }
 }
 
@@ -512,6 +537,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedDate = form.date.value;
     const selectedName = form.name.value;
 
+    updateAttendanceFormAvailability();
+
     if (!selectedDate || !selectedName) return;
     const existing = attendanceRecords.find(
       r => r.date === selectedDate && r.name === selectedName
@@ -529,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('resetFormBtn').addEventListener('click', () => {
     const form = document.getElementById('attendanceForm');
     form.reset();
+    updateAttendanceFormAvailability();
 
     // 선택 강조 해제
     document.querySelectorAll('.calendar td').forEach(td => td.classList.remove('selected-cell'));
@@ -586,6 +614,13 @@ document.addEventListener('DOMContentLoaded', () => {
       note: form.note.value
     };
 
+    // UI 비활성화를 우회한 제출도 저장되지 않도록 최종 방어한다.
+    if (!record.name) {
+      updateAttendanceFormAvailability();
+      form.name.focus();
+      return;
+    }
+
     // 입력값 전부 비어있으면 해당날짜/직원의 기존 데이터 삭제
     const allEmpty = [record.ot, record.nightOt, record.holidayOt, record.flexOt, record.off, record.note].every(v => v === '');
   
@@ -598,6 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveAttendance();
   
     form.reset();
+    updateAttendanceFormAvailability();
 
     refreshCalendarAndSummary();
   });
@@ -626,6 +662,9 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log(currentEmployeeList);
     refreshCalendarAndSummary();
   });
+
+  // 설정/직원 목록을 불러오기 전에도 입력 필드는 직원 선택 전 상태로 잠근다.
+  updateAttendanceFormAvailability();
 
   // 13. 설정 변경 이벤트 시 타이틀 재적용 
   window.api.onSettingsChanged((updatedSettings) => {
